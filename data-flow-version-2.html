@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desk Buddy — Data Flow</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: white;
+  font-family: Arial, sans-serif;
+  padding: 30px;
+  color: #000;
+}
+
+h2 {
+  font-size: 14px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 6px;
+  color: #333;
+}
+.subtitle {
+  font-size: 10px;
+  color: #888;
+  text-align: center;
+  margin-bottom: 28px;
+  letter-spacing: 1px;
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+/* ── SECTION ── */
+.sec {
+  border: 1.5px solid;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.sec-title {
+  font-size: 11px;
+  font-weight: bold;
+  padding: 5px 12px;
+  color: white;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.sec-body {
+  padding: 16px 14px;
+  background: white;
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0;
+  row-gap: 12px;
+}
+
+/* ── NODE ── */
+.node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  max-width: 130px;
+}
+
+/* box */
+.box {
+  border: 1.5px solid #333;
+  border-radius: 4px;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: bold;
+  background: white;
+  text-align: center;
+  width: 100%;
+  line-height: 1.4;
+}
+.box small {
+  display: block;
+  font-weight: normal;
+  font-size: 9px;
+  color: #555;
+  margin-top: 2px;
+}
+
+/* explanation bubble */
+.expl {
+  background: #f9f9f9;
+  border: 1px dashed #ccc;
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 9px;
+  color: #444;
+  line-height: 1.5;
+  text-align: center;
+  width: 100%;
+}
+
+/* ── ARROW ── */
+.arr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 5px;
+  flex-shrink: 0;
+  margin-top: 14px;
+}
+.arr-row {
+  display: flex;
+  align-items: center;
+}
+.arr-line {
+  width: 22px;
+  height: 1.5px;
+  background: #555;
+}
+.arr-tip {
+  width: 0; height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid #555;
+}
+.arr-lbl {
+  font-size: 8px;
+  color: #888;
+  white-space: nowrap;
+  text-align: center;
+  font-style: italic;
+  margin-top: 3px;
+}
+
+/* COLORS */
+.vis { border-color: #1e88e5; }
+.vis .sec-title { background: #1e88e5; }
+.vis .box { border-color: #1e88e5; color: #1e88e5; }
+
+.aud { border-color: #8e24aa; }
+.aud .sec-title { background: #8e24aa; }
+.aud .box { border-color: #8e24aa; color: #8e24aa; }
+
+.out { border-color: #2e7d32; }
+.out .sec-title { background: #2e7d32; }
+.out .box { border-color: #2e7d32; color: #2e7d32; }
+
+.tsk { border-color: #e65100; }
+.tsk .sec-title { background: #e65100; }
+.tsk .box { border-color: #e65100; color: #e65100; }
+
+.flb { border-color: #c62828; }
+.flb .sec-title { background: #c62828; }
+.flb .box { border-color: #c62828; color: #c62828; }
+
+.cloud {
+  border-style: dashed !important;
+  border-color: #555 !important;
+  color: #333 !important;
+  background: #f5f5f5 !important;
+}
+
+</style>
+</head>
+<body>
+
+<h2>Desk Buddy — Data Flow Diagram</h2>
+
+
+<div class="sections">
+
+  <!-- ══ 1. VISION ══ -->
+  <div class="sec vis">
+    <div class="sec-title">1 — Vision</div>
+    <div class="sec-body">
+
+      <div class="node">
+        <div class="box">ESP32-CAM<small>OV2640 sensor</small></div>
+        <div class="expl">Small camera module. Captures images and sends them over WiFi to the PC.</div>
+      </div>
+
+      <div class="arr">
+        <div class="arr-row"><div class="arr-line"></div><div class="arr-tip"></div></div>
+        <div class="arr-lbl">JPEG · WiFi</div>
+      </div>
+
+      <div class="node">
+        <div class="box">OpenCV<small>Haar Cascade</small></div>
+        <div class="expl">Python library. Analyzes each image to find if a human face is present.</div>
+      </div>
+
+      <div class="arr">
+        <div class="arr-row"><div class="arr-line"></div><div class="arr-tip"></div></div>
+        <div class="arr-lbl">face ROI</div>
+      </div>
+
+      <div class="node">
+        <div class="box">TFLite<small>FER2013 model</small></div>
+        <div class="expl">Lightweight AI model. Reads the face and predicts the emotion among 4 classes.</div>
+      </div>
+
+      <div class="arr">
+        <div class="arr-row"><div class="arr-line"></div><div class="arr-tip"></div></div>
+        <div class="arr-lbl">result</div>
+      </div>
+
+      <div class="node">
+        <div class="box">Emotion stored<small>"happy" · 0.87</small></div>
+        <div class="expl">The detected emotion and confidence score are saved in RAM for later use.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ 2. AUDIO ══ -->
+  <div class="sec aud">
+    <div class="sec-title">2 — Audio</div>
+    <div class="sec-body">
+
+      <div class="node">
+        <div class="box">Microphone USB<small>PCM 16kHz</small></div>
+        <div class="expl">USB mic plugged into the PC. Captures sound continuously at 16kHz.</div>
+      </div>
+
+      <div class="arr">
+        <div class="arr-row"><div class="arr-line"></div><div class="arr-tip"></div></div>
+        <div class="arr-lbl">audio stream</div>
+      </div>
+
+      <div class="node">
+        <div class="box">Porcupine<small>"Desk Buddy"</small></div>
+        <div class="expl">Listens for the trigger word only. Uses less than 5% CPU. Works offline.</div>
+      </div>
+
+      <div class="arr">
+        <div class="arr-row"><div class="arr-line"></div><div class="arr-tip"></div></div>
+        <div class="arr-lbl">wake event</div>
+      </div>
+
+      <div class="node">
+        <div class="box">Vosk STT<small>offline · ~1s</small></div>
+        <div class="expl">Converts your voice into text. Runs locally on the PC, no internet needed.</div>
+      </div>
+
+      <div class="arr">
+        <div class="arr-row"><div class="arr-line"></div><div class="arr-tip"></div></div>
+        <div class="arr-lbl">text + emotion</div>
+      </div>
+
+      <div class="node">
+        <div class="box">Ollama<small>Llama 3.2 · local</small></div>
+        <div class="expl">Free local AI model. Receives your text + detected emotion and generates a smart response.</div>
+      </div>
+
+      <div class="arr">
+        <div class="arr-row"><div class="arr-line"></div><div class="arr-tip"></div></div>
+        <div class="arr-lbl">response ~2s</div>
+      </div>
+
+      <div class="node">
+        <div class="box">Intent + Response<small>TASK / ANSWER / ...</small></div>
+        <div class="expl">The AI returns a text response and identifies what the user wants to do.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ 3. OUTPUT ══ -->
+  <div class="sec out">
+    <div class="sec-title">3 — Output</div>
+    <div class="sec-body">
+
+      <div class="node">
+        <div class="box">Response text<small>from OpenAI</small></div>
+        <div class="expl">The text answer generated by the AI, ready to be spoken and displayed.</div>
+      </div>
+
+      <div class="arr">
+        <div class="arr-row"><div class="arr-line"></div><div class="arr-tip"></div></div>
+        <div class="arr-lbl">string</div>
+      </div>
+
+      <div class="node">
+        <div class="box">pyttsx3 TTS<small>eSpeak · offline</small></div>
+        <div class="expl">Text-to-Speech library. Converts the text into voice audio. No internet needed.</div>
+      </div>
+
+      <div class="arr">
+        <div class="arr-row"><div class="arr-line"></div><div class="arr-tip"></div></div>
+        <div class="arr-lbl">PCM audio</div>
+      </div>
+
+      <div class="node">
+        <div class="box">Speaker<small>jack 3.5mm</small></div>
+        <div class="expl">Small speaker connected to the PC audio jack. Plays the voice response out loud.</div>
+      </div>
+
+      <div class="arr" style="margin-left:16px;">
+        <div class="arr-row"><div class="arr-line"></div><div class="arr-tip"></div></div>
+        <div class="arr-lbl">I2C · bitmap</div>
+      </div>
+
+      <div class="node">
+        <div class="box">OLED SSD1306<small>128×64 px</small></div>
+        <div class="expl">Tiny screen connected via I2C. Displays the emotion face and the response text.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ 4. TASKS ══ -->
+  <div class="sec tsk">
+    <div class="sec-title">4 — Tasks & Reminders</div>
+    <div class="sec-body">
+
+      <div class="node">
+        <div class="box">Intent detected<small>TASK / REMINDER</small></div>
+        <div class="expl">The AI identified that the user wants to create a task or set a reminder.</div>
+      </div>
+
+      <div class="arr">
+        <div class="arr-row"><div class="arr-line"></div><div class="arr-tip"></div></div>
+        <div class="arr-lbl">INSERT</div>
+      </div>
+
+      <div class="node">
+        <div class="box">SQLite<small>tasks.db</small></div>
+        <div class="expl">Local database stored on the PC. Saves tasks with title, date and time.</div>
+      </div>
+
+      <div class="arr">
+        <div class="arr-row"><div class="arr-line"></div><div class="arr-tip"></div></div>
+        <div class="arr-lbl">monitors</div>
+      </div>
+
+      <div class="node">
+        <div class="box">Scheduler<small>threading</small></div>
+        <div class="expl">Runs in background and checks if a task deadline has been reached.</div>
+      </div>
+
+      <div class="arr">
+        <div class="arr-row"><div class="arr-line"></div><div class="arr-tip"></div></div>
+        <div class="arr-lbl">triggered</div>
+      </div>
+
+      <div class="node">
+        <div class="box">Alert<small>Speaker + OLED</small></div>
+        <div class="expl">When the time comes, plays a voice alert and displays the reminder on screen.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ 5. FALLBACK ══ -->
+  <div class="sec flb">
+    <div class="sec-title">5 — Fallback (No Internet)</div>
+    <div class="sec-body">
+
+      <div class="node">
+        <div class="box">OpenAI unreachable<small>connection error</small></div>
+        <div class="expl">The PC cannot reach the OpenAI server because there is no internet connection.</div>
+      </div>
+
+      <div class="arr">
+        <div class="arr-row"><div class="arr-line"></div><div class="arr-tip"></div></div>
+        <div class="arr-lbl">try / except</div>
+      </div>
+
+      <div class="node">
+        <div class="box">Local fallback<small>"No connection"</small></div>
+        <div class="expl">Python catches the error. A default message is used instead of the AI response.</div>
+      </div>
+
+      <div class="arr">
+        <div class="arr-row"><div class="arr-line"></div><div class="arr-tip"></div></div>
+        <div class="arr-lbl">continues</div>
+      </div>
+
+      <div class="node">
+        <div class="box">System running<small>without AI</small></div>
+        <div class="expl">Vision, audio capture and tasks still work. Only AI responses are unavailable.</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
