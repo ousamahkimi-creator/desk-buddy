@@ -1,1 +1,241 @@
+# -*- coding: utf-8 -*-
 
+# ============================================================
+# IMPORTS — loading the libraries we installed
+# ============================================================
+
+import speech_recognition as sr  # Listens to mic and converts audio to text
+import requests                   # Sends HTTP requests to the Ollama AI API
+import re                         # Cleans text using pattern matching (built-in)
+import sys                        # Controls the program itself e.g. exit (built-in)
+import time                       # Adds pauses/delays between actions (built-in)
+import os                         # Interacts with the operating system e.g. files (built-in)
+from gtts import gTTS             # Converts text to speech audio using Google
+
+# ============================================================
+# CONFIGURATION — the main settings you can change
+# ============================================================
+
+WAKE_WORD = "hey"                          # The word that activates the assistant
+OLLAMA_API_URL = "http://localhost:11434/api/generate"  # Address of the local AI server
+MODEL_NAME = "tinyllama"                   # The AI model Ollama will use
+AUDIO_FILE = "temp_response.mp3"          # Temporary file to store the audio response
+LANGUAGE = "en-US"                        # Language for speech recognition
+
+# ============================================================
+# MICROPHONE SETUP — initializing the mic and recognizer
+# ============================================================
+
+recognizer = sr.Recognizer()  # Creates the speech recognition engine
+mic = sr.Microphone()         # Connects to your default microphone
+
+# ============================================================
+# FUNCTION: clean_text
+# Removes special characters that would break the text-to-speech engine
+# ============================================================
+
+def clean_text(text):
+    if not text:
+        return ""
+    
+    # Keep only letters, numbers, basic punctuation and accented characters
+    text = re.sub(r'[^\w\s.,!?;:\'àâäéèêëïîôùûüÿçÀÂÄÉÈÊËÏÎÔÙÛÜŸÇ-]', ' ', text)
+    
+    # Replace line breaks with a period
+    text = text.replace('\n', '. ').replace('\r', '')
+    
+    # Remove multiple dots in a row
+    text = re.sub(r'\.{2,}', '.', text)
+    
+    # Limit to 250 characters so the audio file doesn't get too long
+    return text.strip()[:250]
+
+# ============================================================
+# FUNCTION: speak
+# Converts text to an audio file and plays it on Windows
+# ============================================================
+
+def speak(text):
+    text = clean_text(text)
+    if not text:
+        return
+
+    print(f"Assistant: {text}")
+    
+    try:
+        # Step 1 — Generate the audio file using Google TTS
+        tts = gTTS(text=text, lang='en', slow=False)
+        tts.save(AUDIO_FILE)
+        
+        # Step 2 — Play the audio file using Windows default media player
+        # 'start' launches it in the background so the program keeps running
+        os.system(f"start {AUDIO_FILE}")
+        
+        # Step 3 — Wait for the audio to finish playing
+        # Estimate: roughly 60ms per character + safety buffer
+        duration = len(text) * 0.06
+        time.sleep(min(duration, 12))
+        
+        # Step 4 — Delete the temporary audio file
+        try:
+            time.sleep(0.5)  # Small extra delay to make sure Windows released the file
+            if os.path.exists(AUDIO_FILE):
+                os.remove(AUDIO_FILE)
+        except PermissionError:
+            pass  # If Windows still has the file open, just skip deletion
+            
+    except Exception as e:
+        print(f"TTS Error: {e}")
+
+# ============================================================
+# FUNCTION: listen
+# Records audio from the mic and returns it as text
+# ============================================================
+
+def listen(timeout=5, phrase_time_limit=12):
+    try:
+        with mic as source:
+            # Listen and capture audio, stop after timeout seconds of silence
+            audio = recognizer.listen(source, timeout=timeout, phrase_time_limit=phrase_time_limit)
+        
+        try:
+            # Send audio to Google's servers to convert to text
+            # This requires an internet connection
+            text = recognizer.recognize_google(audio, language=LANGUAGE)
+            return text.lower()
+        except sr.UnknownValueError:
+            # Google could not understand the audio
+            return None
+        except sr.RequestError as e:
+            print(f"Google Speech connection error: {e}")
+            return None
+            
+    except sr.WaitTimeoutError:
+        # Nobody spoke within the timeout window
+        return None
+    except Exception as e:
+        print(f"Microphone error: {e}")
+        return None
+
+# ============================================================
+# FUNCTION: ask_ollama
+# Sends the user's question to the local AI and returns the answer
+# ============================================================
+
+def ask_ollama(prompt):
+    try:
+        payload = {
+            "model": MODEL_NAME,
+            "prompt": prompt,
+            # System prompt tells the AI how to behave
+            "system": "You are a helpful voice assistant. ALWAYS respond in ONE short, simple spoken sentence in English. No lists, no formatting.",
+            "stream": False,      # Get the full response at once, not word by word
+            "options": {
+                "temperature": 0.3,   # Lower = more stable and predictable responses
+                "num_predict": 80     # Maximum number of tokens (roughly 40-60 words)
+            }
+        }
+        
+        print("Thinking...", end="\r")
+        response = requests.post(OLLAMA_API_URL, json=payload, timeout=90)
+        print(" " * 30, end="\r")  # Clear the "Thinking..." message
+        
+        if response.status_code == 200:
+            data = response.json()
+            raw_response = data.get("response", "").strip()
+            
+            if not raw_response:
+                return "I don't have an answer for that."
+            return raw_response
+        elif response.status_code == 404:
+            return f"The model '{MODEL_NAME}' was not found."
+        else:
+            return f"API error {response.status_code}"
+            
+    except requests.exceptions.Timeout:
+        return "I'm taking too long to respond."
+    except requests.exceptions.ConnectionError:
+        return "Ollama is not running."
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+# ============================================================
+# MAIN LOOP — this is where the program actually runs
+# ============================================================
+
+if __name__ == "__main__":
+    print("="*50)
+    print("DESK BUDDY - Voice Assistant")
+    print(f"Model: {MODEL_NAME}")
+    print(f"Wake word: '{WAKE_WORD}'")
+    print("="*50)
+    
+    # Calibrate the microphone to the background noise level
+    print("Calibrating microphone...")
+    with mic as source:
+        recognizer.adjust_for_ambient_noise(source, duration=1)
+    print("Ready!\n")
+    
+    # Startup confirmation
+    speak("Hello. I am ready.")
+    time.sleep(1)
+    
+    try:
+        while True:
+            # ---- IDLE STATE: waiting for wake word ----
+            print("Waiting for wake word...", end="\r")
+            text = listen(timeout=6)
+            
+            if text:
+                print(f"Heard: '{text}'")
+                
+                if WAKE_WORD in text:
+                    speak("Yes, I am listening.")
+                    time.sleep(1)
+                    
+                    # ---- ACTIVE STATE: conversation loop ----
+                    while True:
+                        print("Listening...")
+                        user_input = listen(timeout=10, phrase_time_limit=15)
+                        
+                        if user_input:
+                            print(f"You said: {user_input}")
+                            
+                            # Check if the user wants to stop
+                            if any(w in user_input for w in ["stop", "goodbye", "bye", "quit", "exit"]):
+                                speak("Goodbye!")
+                                break
+                            
+                            # Send question to AI and speak the answer
+                            response = ask_ollama(user_input)
+                            
+                            if response and len(response.strip()) > 5:
+                                speak(response)
+                                time.sleep(1.5)
+                            else:
+                                speak("I did not understand that.")
+                        else:
+                            speak("I heard nothing. Going back to sleep.")
+                            break
+                            
+    except KeyboardInterrupt:
+        # User pressed Ctrl+C to stop the program
+        print("\nStopping...")
+        speak("Goodbye.")
+        
+        # Clean up the temporary audio file if it exists
+        try:
+            if os.path.exists(AUDIO_FILE):
+                os.remove(AUDIO_FILE)
+        except:
+            pass
+            
+        sys.exit(0)
+        
+    except Exception as e:
+        print(f"Critical error: {e}")
+        sys.exit(1) 
+with mic as source:
+    recognizer.adjust_for_ambient_noise(source, duration=1)
+    # ADD THIS LINE RIGHT HERE:
+    recognizer.energy_threshold = 300 
